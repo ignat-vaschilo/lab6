@@ -18,6 +18,8 @@ struct bankDeposit {
     double amountAfterYear;
 };
 
+
+
 vector<string> split(string str, char delim) {
     vector<std::string> tokens;
     stringstream ss(str);
@@ -39,7 +41,18 @@ void writeToFile(string fileName, bool binary, vector<bankDeposit> deposits) {
     file << fixed << setprecision(2); 
     for (bankDeposit deposit: deposits) {
         if (binary) {
-            file.write((char*)&deposit, sizeof(deposit));
+            unsigned short nameLen = deposit.name.length();
+            file.write((char*)&nameLen, sizeof(unsigned short));
+            file.write(deposit.name.c_str(), deposit.name.length());
+            
+            file.write((char*)&deposit.amount, sizeof(deposit.amount));
+            
+            unsigned short currencyLen = deposit.currencyType.length();
+            file.write((char*)&currencyLen, sizeof(currencyLen));
+            file.write(deposit.currencyType.c_str(), currencyLen);
+            
+            file.write((char*)&deposit.rate, sizeof(deposit.rate));
+            file.write((char*)&deposit.amountAfterYear, sizeof(deposit.amountAfterYear));
         } else {
             file << deposit.name << ' ' << deposit.amount << ' ' << deposit.currencyType << ' '
                  << deposit.rate << ' ' << deposit.amountAfterYear << '\n';
@@ -81,10 +94,30 @@ void readFromFile(string fileName, bool binary) {
             }
         }
     } else {
-        bankDeposit deposit;
-        while (file.read((char*)&deposit, sizeof(deposit))) {
-            cout << deposit.name << ' ' << deposit.amount << ' ' << deposit.currencyType << ' '
-                 << deposit.rate << ' ' << deposit.amountAfterYear << '\n';
+        while (!file.eof()) {
+            unsigned short nameLen;
+            if (!file.read((char*)&nameLen, sizeof(nameLen))) break;
+            
+            vector<char> nameBuffer(nameLen);
+            file.read(nameBuffer.data(), nameLen);
+            string name(nameBuffer.begin(), nameBuffer.end());
+            
+            double amount;
+            file.read((char*)&amount, sizeof(amount));
+            
+            unsigned short currencyLen;
+            file.read((char*)&currencyLen, sizeof(currencyLen));
+            
+            vector<char> currencyBuffer(currencyLen);
+            file.read(currencyBuffer.data(), currencyLen);
+            string currencyType(currencyBuffer.begin(), currencyBuffer.end());
+            
+            double rate, amountAfterYear;
+            file.read((char*)&rate, sizeof(rate));
+            file.read((char*)&amountAfterYear, sizeof(amountAfterYear));
+            
+            cout << name << ' ' << amount << ' ' << currencyType << ' '
+                 << rate << ' ' << amountAfterYear << '\n';
         }
     }
     file.close();
